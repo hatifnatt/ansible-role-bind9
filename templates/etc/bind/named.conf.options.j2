@@ -1,0 +1,80 @@
+{% from 'macro.j2' import dump_config, dump_address_match_list, zone_type with context%}
+// ACL-s
+{% for aclname, rules in bind9_acls.items() %}
+acl "{{ aclname }}" {
+{%  for rule in rules %}
+    {{ rule }};
+{%  endfor %}
+};
+{% endfor %}
+
+{% set options = bind9_options_conf %}
+{% set acl_names = bind9_acls.keys() %}
+options {
+{% if 'directory' in options %}
+	directory "{{ options['directory'] }}";
+{% else %}
+	directory "/var/cache/bind";
+{% endif %}
+
+	// If there is a firewall between you and nameservers you want
+	// to talk to, you may need to fix the firewall to allow multiple
+	// ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+	// If your ISP provided one or more IP addresses for stable
+	// nameservers, you probably want to use them as forwarders.
+	// Uncomment the following block, and insert the addresses replacing
+	// the all-0's placeholder.
+
+{% if 'forwarders' in options %}
+{{ dump_address_match_list('forwarders', options, acl_names, ind=1) }}
+{% else %}
+	// forwarders {
+	//      0.0.0.0;
+	// };
+{% endif %}
+
+	//========================================================================
+	// If BIND logs error messages about the root key being expired,
+	// you will need to update your keys.  See https://www.isc.org/bind-keys
+	//========================================================================
+{% if 'dnssec-validation' in options %}
+	dnssec-validation {{ options['dnssec-validation'] }};
+{% else %}
+	dnssec-validation auto;
+{% endif %}
+
+{% if 'listen-on' in options %}
+{{ dump_address_match_list('listen-on', options, acl_names, ind=1) }}
+{% endif %}
+
+{% if 'listen-on-v6' in options %}
+{{ dump_address_match_list('listen-on-v6', options, acl_names, ind=1) }}
+{% else %}
+	// listen-on-v6 { any; };
+{% endif %}
+
+{% if bind9_rpz_zones %}
+	// RPZ Zones
+	response-policy {
+{%  for rpz_zone_name, rpz_zone in bind9_rpz_zones.items() %}
+{%    if rpz_zone.get('ensure', 'present') == 'present' %}
+{%    set zone_options = rpz_zone.get('options', {}) %}
+		// {{ rpz_zone.get('comment', rpz_zone_name) }}
+		zone "{{ rpz_zone_name }}"{{ dump_config(zone_options, ind=' ', delim='', lb='') }};
+{%     endif %}
+{%   endfor %}
+	};
+{% endif %}
+
+{% if 'extra_options' in options %}
+{{ dump_config(options.get('extra_options', {}), ind='\t') }}
+{% endif %}
+};
+
+{% if bind9_logging %}
+// Logging
+logging {
+{{- dump_config(bind9_logging | default({}), ind='\t') }}
+};
+{% endif %}

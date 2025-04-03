@@ -1,0 +1,100 @@
+#jinja2: trim_blocks:False
+{%- macro dump_config(value, key='', ind='', operator=' ', delim=';', lb='\n', ind_increment='\t', depth=0) -%}
+    {%- if value is number or value is string -%}
+        {%- if key and value -%}
+            {#- Add extra indentation for multiline values -#}
+            {%- set ind_extra = ind + ind_increment -%}
+{{ key|indent(ind, True) }}{{ operator }}{{ value|string|indent(ind + ind_extra) }}{{ delim }}{{ lb }}
+        {%- else -%}
+        {#- Do not insert delimiter in strings with comments -#}
+{{ value|indent(ind, True) }}{{ delim if not value is regex('^(\/\/|\/\*|#).*') }}{{ lb }}
+        {%- endif -%}
+    {%- elif value is mapping -%}
+        {%- set depth = depth + 1 -%}
+        {%- for k, v in value.items() -%}
+            {#- If var is dict or list of dicts or list and depth is more than 0
+                create context block -#}
+            {%- if v is mapping
+                    or (v is iterable and v|length > 0 and v[0] is mapping)
+                    or (not v is string and v is iterable and v|length > 0 and depth > 0) -%}
+{{ lb }}{{ k|indent(ind, True) }} {{ '{' }}
+{{ dump_config(v, '', ind + ind_increment, depth=depth) -}}
+{{ '}'|indent(ind, True) }}{{ delim }}{{ lb }}
+            {%- else -%}
+{{ dump_config(v, k, ind, operator, delim, lb, ind_increment, depth=depth) -}}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- elif value is iterable -%}
+        {%- for v in value -%}
+{{ dump_config(v, key, ind, operator, delim, lb, ind_increment, depth=depth+1) }}
+        {%- endfor -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro dump_address_match_list(param_name, dataset, acl_names, ind=0, ind_str='\t', delim=';', lb='\n') -%}
+{{ param_name|indent(ind_str|string*ind, True) }} {{ '{' }}{{ lb }}
+    {%- for item in dataset[param_name] -%}
+        {#- Add double quotes if item matches with acl name -#}
+        {%- if item in acl_names -%}
+        {%- set i='"' ~ item ~ '"' -%}
+{{ i|indent(ind_str|string*(ind+1), True) }}{{ delim }}{{ lb }}
+        {%- else -%}
+        {#- Do not insert delimiter in strings with comments -#}
+{{ item|indent(ind_str|string*(ind+1), True) }}{{ delim if not item is regex('^(\/\/|\/\*|#).*') }}{{ lb }}
+        {%- endif -%}
+    {%- endfor -%}
+{{ '}'|indent(ind_str|string*ind, True) }}{{ delim }}
+{%- endmacro -%}
+
+{%- macro dump_zone(zone, ind=0, ind_str='\t', delim=';', lb='\n') -%}
+    {%- set zone_type = zone.get('type', '') -%}
+    {%- set master_types = ['master', 'primary'] -%}
+    {%- set slave_types = ['slave', 'secondary'] -%}
+    {%- set invalid = '// It seems zone type have invalid value: ' ~ zone_type ~ ', please set'
+            ~ lb ~ '// zone.type: ' ~ bind9_valid_zone_types|join(', ')
+            ~ lb ~ '// OR zone.master_ip: IPv4 of the primary master server' %}
+    {%- set type = '' -%}
+    {#- If value from type matches with one of the valid zone types use it
+        otherwise check is zone.master_ip belongs to this server if that's the case set type to 'master'
+        if zone type is not defined set type to 'slave' -#}
+    {%- if zone_type in bind9_valid_zone_types -%}
+        {%- set type = zone_type -%}
+    {%- elif zone.get('master_ip', '') in ansible_all_ipv4_addresses -%}
+        {%- set type = 'master' -%}
+    {%- elif zone_type == '' -%}
+        {%- set type = 'slave' -%}
+    {%- endif -%}
+    {%- if type in bind9_valid_zone_types -%}
+        {#- Variable with full string is requred for proper indentation -#}
+        {%- set type_str = 'type ' ~ type ~ ';' -%}
+{{ type_str|indent(ind_str|string*ind, True) }}
+    {%- else -%}
+{{ invalid|indent(ind_str|string*ind, True) }}
+    {%- endif -%}
+    {%- if type in master_types and zone.get('props_master', {}) -%}
+{{ dump_config(zone.get('props_master', {}), ind='\t') }}
+    {%- elif type in slave_types and zone.get('props_slave', {}) -%}
+{{ dump_config(zone.get('props_slave', {}), ind='\t') }}
+    {%- endif -%}
+    {#- Always dump generic props if present -#}
+    {%- if zone.get('props', {}) -%}
+{{ dump_config(zone.get('props', {}), ind='\t') }}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro dump_rr(rr, ind=0, ind_str='\t', delim='', lb='\n') -%}
+    {%- set rr_name = rr.get('name', '@') -%}
+    {%- set rr_ttl = rr.get('ttl', '') ~ '	' -%}
+    {%- set rr_class = rr.get('class', 'IN') -%}
+    {%- set rr_type = rr.get('type', 'A') -%}
+    {%- set rr_pref = rr.get('pref', '10')~' ' -%}
+    {%- set rr_value = rr.get('value', '') -%}
+    {%- if rr_type == 'TXT' -%}
+        {%- if rr_value is number or rr_value is string -%}
+            {%- set rr_value = '"' ~ rr_value ~ '"'|indent('\t'*5) -%}
+        {%- elif rr_value is iterable -%}
+            {%- set rr_value = '("' ~ rr_value|join('"\n"')|indent('\t'*5) ~ '")' -%}
+        {%- endif -%}
+    {%- endif -%}
+{{ rr_name }}	{{ rr_ttl }}	{{ rr_class }}	{{ rr_type }}	{{ rr_pref if rr_type == 'MX'  }}{{ rr_value }}
+{%- endmacro -%}

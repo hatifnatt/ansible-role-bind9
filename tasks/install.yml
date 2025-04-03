@@ -1,0 +1,24 @@
+---
+# TODO Pin (hold) version?
+# Install main packages
+- name: Bind9 | Install packages
+  ansible.builtin.package:
+    name: "{{ bind9_packages }}"
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags:
+    - install
+    - bind9
+    - bind9-install
+
+# Install extra packages
+- name: Bind9 | Install extra packages
+  ansible.builtin.package:
+    name: "{{ bind9_extra_packages }}"
+    state: present
+  ignore_errors: "{{ ansible_check_mode }}"
+  when: bind9_extra_packages
+  tags:
+    - install
+    - bind9
+    - bind9-install

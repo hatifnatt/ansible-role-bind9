@@ -1,0 +1,6 @@
+---
+# Options for Debian /etc/default/named
+# Moved to defaults for simplicity but left her for the future possibilities
+# __bind9_default_file: /etc/default/named
+# __bind9_default_resolvconf: ''
+# __bind9_default_options: ''

@@ -1,0 +1,14 @@
+#jinja2: trim_blocks:False
+{% from 'macro.j2' import dump_config  with context -%}
+
+// Top level
+{{ dump_config(bind9_cfg_top) }}
+
+// Level 1
+{{ dump_config(bind9_cfg_lvl1) }}
+
+// Top level list
+{{ dump_config(bind9_cfg_top_list) }}
+
+{# // Level 1 list
+{{ dump_config(bind9_cfg_lvl1_list) }} #}

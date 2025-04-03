@@ -1,0 +1,14 @@
+#
+# run resolvconf?
+{% if bind9_default_resolvconf is defined and bind9_default_resolvconf %}
+RESOLVCONF={{ bind9_default_resolvconf | bool | ternary('yes', 'no') }}
+{% else %}
+RESOLVCONF=no
+{% endif %}
+
+# startup options for the server
+{% if bind9_default_options is defined and bind9_default_options %}
+OPTIONS="{{ bind9_default_options }}"
+{% else %}
+OPTIONS="-u bind"
+{% endif %}

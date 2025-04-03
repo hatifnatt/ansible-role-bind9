@@ -1,0 +1,74 @@
+---
+# Create primary config usually /etc/bind/named.conf
+- name: Bind9 | Update primary configuration file
+  ansible.builtin.template:
+    src: "{{ bind9_primary_conf_template }}"
+    dest: "{{ bind9_primary_conf_file }}"
+    owner: root
+    group: "{{ bind9_group }}"
+    mode: "0644"
+  # Only update configuration file if some configuration data provided
+  when: bind9_options_conf_file or bind9_local_conf_file or bind9_default_zones_conf_file
+  notify:
+    - Bind9 | Validate config
+    - Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config
+
+# Create options config file usually /etc/bind/named.conf.options
+- name: Bind9 | Update options configuration file
+  ansible.builtin.template:
+    src: "{{ bind9_options_conf_template }}"
+    dest: "{{ bind9_options_conf_file }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0644"
+  # Only update configuration file if some configuration data provided
+  when:
+    - bind9_options_conf or bind9_acls
+  notify:
+    - Bind9 | Validate config
+    - Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config
+
+# Create local config file usually /etc/bind/named.conf.local
+- name: Bind9 | Update local configuration file
+  ansible.builtin.template:
+    src: "{{ bind9_local_conf_template }}"
+    dest: "{{ bind9_local_conf_file }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0644"
+  # Only update configuration file if some configuration data provided
+  when: bind9_local_conf or bind9_ddns_keys or bind9_forward_zones or bind9_reverse_zones or bind9_rpz_zones
+  notify:
+    - Bind9 | Validate config
+    - Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config
+
+# Create default-zones config file usually /etc/bind/named.conf.default-zones
+- name: Bind9 | Update default-zones configuration file
+  ansible.builtin.template:
+    src: "{{ bind9_default_zones_conf_template }}"
+    dest: "{{ bind9_default_zones_conf_file }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0644"
+  # Only update configuration file if some configuration data provided
+  when: bind9_default_zones_conf
+  notify:
+    - Bind9 | Validate config
+    - Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config
+

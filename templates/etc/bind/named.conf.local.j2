@@ -1,0 +1,69 @@
+{% from 'macro.j2' import dump_config, dump_zone with context %}
+//
+// Do any local configuration here
+//
+
+// Consider adding the 1918 zones here, if they are not used in your
+// organization
+//include "/etc/bind/zones.rfc1918";
+
+{% if bind9_ddns_key_files %}
+// DDNS Key files
+{%   for key, value in bind9_ddns_key_files.items() %}
+{%     if value.get('ensure', 'present') == 'present' %}
+include "{{ [bind9_ddns_key_dir, key] | path_join }}";
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{% if bind9_ddns_keys %}
+// DDNS Keys
+{%   for key_name, key in bind9_ddns_keys.items() %}
+key "{{ key_name }}" {
+	algorithm {{ key['algorithm'] }};
+	secret "{{ key['secret'] }}";
+};
+{%   endfor %}
+{% endif %}
+
+{% if bind9_forward_zones %}
+// Forward Zones
+{%  for fzone_name, fzone in bind9_forward_zones.items() %}
+{%    if fzone.get('ensure', 'present') == 'present' %}
+{% set fzone_filename = (bind9_zones_dir, fzone_name ~ '.hosts') | path_join  %}
+// {{ fzone.get('comment', fzone_name) }}
+zone "{{ fzone_name }}" {
+	file "{{ fzone_filename }}";
+{{ dump_zone(fzone, ind=1) }}
+};
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{% if bind9_reverse_zones %}
+// Reverse Zones
+{%  for rzone_name, rzone in bind9_reverse_zones.items() %}
+{%    if rzone.get('ensure', 'present') == 'present' %}
+{% set rzone_filename = (bind9_zones_dir, rzone_name ~ '.rev') | path_join  %}
+// {{ rzone.get('comment', rzone_name) }}
+zone "{{ rzone_name.split('.')[0:3]|reverse|join('.') }}.in-addr.arpa" {
+	file "{{ rzone_filename }}";
+{{ dump_zone(rzone, ind=1) }}
+};
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{% if bind9_rpz_zones %}
+// RPZ Zones
+{%  for rpz_zone_name, rpz_zone in bind9_rpz_zones.items() %}
+{%    if rpz_zone.get('ensure', 'present') == 'present' %}
+{% set rpz_zone_filename = (bind9_zones_dir, rpz_zone_name ~ '.rpz') | path_join  %}
+// {{ rpz_zone.get('comment', rpz_zone_name) }}
+zone "{{ rpz_zone_name }}" {
+	file "{{ rpz_zone_filename }}";
+{{ dump_zone(rpz_zone, ind=1) }}
+};
+{%     endif %}
+{%   endfor %}
+{% endif %}

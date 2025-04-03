@@ -1,0 +1,14 @@
+---
+# Create default file /etc/defaults/named
+- name: Bind9 | Update Debian default file
+  ansible.builtin.template:
+    src: "{{ bind9_default_file.lstrip('/') }}.j2"
+    dest: "{{ bind9_default_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config

@@ -1,0 +1,95 @@
+---
+# Configuration reference
+# https://bind9.readthedocs.io/en/stable/
+
+# List of supported OS in format of ansible_os_family
+bind9_supported_os_family:
+  - Debian
+
+# packages
+bind9_packages:
+  - bind9
+  - bind9-dnsutils
+
+bind9_extra_packages: []
+
+# bind9 (named) service parameters
+bind9_service_name: named
+bind9_service_manage: true
+bind9_service_state: started
+bind9_service_enabled: true
+
+bind9_user: bind
+bind9_group: bind
+
+# configuration files
+# options for Debian /etc/default/named
+bind9_default_file: /etc/default/named
+bind9_default_resolvconf: ''
+bind9_default_options: ''
+
+bind9_primary_conf_file: /etc/bind/named.conf
+bind9_primary_conf_template: etc/bind/named.conf.j2
+
+bind9_acls: {}
+
+bind9_options_conf_file: /etc/bind/named.conf.options
+bind9_options_conf_template: etc/bind/named.conf.options.j2
+bind9_options_conf:
+  directory: /var/cache/bind
+  dnssec-validation: auto
+  listen-on-v6:
+    - "none"
+  extra_options: {}
+
+bind9_logging:
+  category lame-servers:
+    - |-
+      // Don't log "lame server" messages. A lame server is one listed  as authoritive
+      // (as in, it's listed as a nameserver in the domain record) but when queried,
+      // it responds as non-authoritive. Nothing you can do about it, and it's not very important.
+    - "null"
+
+bind9_local_conf_file: /etc/bind/named.conf.local
+bind9_local_conf_template: etc/bind/named.conf.local.j2
+bind9_local_conf: {}
+
+bind9_default_zones_conf_file: /etc/bind/named.conf.default-zones
+bind9_default_zones_conf_template: etc/bind/named.conf.default-zones.j2
+bind9_default_zones_conf: {}
+
+# ddns key files
+# created key files will be referenced in named.conf.local via 'include "some.key"' statements
+bind9_ddns_key_dir: /etc/bind/keys
+bind9_ddns_key_template: etc/bind/keys/key.j2
+bind9_ddns_key_files: {}
+
+# ddns keys
+# will be rendered in named.conf.local config file
+bind9_ddns_keys: {}
+
+# zone files
+bind9_valid_zone_types:
+  - master
+  - primary
+  - slave
+  - secondary
+  - delegation-only
+  - forward
+  - hint
+  - in-view
+  - redirect
+  - static-stub
+  - stub
+
+bind9_zones_dir: /var/lib/bind
+bind9_forward_zone_template: forward_zone.j2
+bind9_forward_zones: {}
+
+bind9_reverse_zone_template: reverse_zone.j2
+bind9_reverse_zones: {}
+
+bind9_rpz_zone_template: rpz_zone.j2
+bind9_rpz_zones: {}
+
+# check Debian specific variables in vars/Debian.yml file

@@ -1,0 +1,576 @@
+---
+# Configuration reference
+# https://bind9.readthedocs.io/en/stable/
+
+# List of supported OS in format of ansible_os_family
+bind9_supported_os_family:
+  - Debian
+
+# packages
+bind9_packages:
+  - bind9
+  - bind9-dnsutils
+
+bind9_extra_packages: []
+
+# bind9 (named) service parameters
+bind9_service_name: named
+bind9_service_manage: true
+bind9_service_state: started
+bind9_service_enabled: true
+
+bind9_user: bind
+bind9_group: bind
+
+# configuration files
+# options for Debian /etc/default/named
+bind9_default_file: /etc/default/named
+# true / false or 'yes' / 'no' string
+bind9_default_resolvconf: ''
+# use username defined above, start one worker thread
+bind9_default_options: '-u {{ bind9_user }} -n 1'
+
+bind9_primary_conf_file: /etc/bind/named.conf
+bind9_primary_conf_template: etc/bind/named.conf.j2
+
+bind9_acls:
+  local_networks:
+    - // this acl is an alias for localnets
+    - localnets
+  listen_on:
+    - // loopback
+    - "{{ ansible_lo['ipv4']['address'] }}"
+    - // dummy0
+    - "{{ ansible_dummy0['ipv4']['address'] }}"
+    - // eth0
+    - "{{ ansible_eth0['ipv4']['address'] }}"
+
+bind9_options_conf_file: /etc/bind/named.conf.options
+bind9_options_conf_template: etc/bind/named.conf.options.j2
+bind9_options_conf:
+  directory: /var/cache/bind
+  forwarders:
+    - |-
+      // multiline
+      // comment
+    - 1.1.1.1
+    - 8.8.4.4
+  dnssec-validation: auto
+  listen-on:
+    - listen_on
+  listen-on-v6:
+    - "none"
+  extra_options:
+    notify: "explicit"
+    send-cookie: "no"
+
+bind9_logging:
+  category lame-servers:
+    - |-
+      // Don't log "lame server" messages. A lame server is one listed  as authoritive
+      // (as in, it's listed as a nameserver in the domain record) but when queried,
+      // it responds as non-authoritive. Nothing you can do about it, and it's not very important.
+    - "null"
+  channel rpzlog:
+    # if quoted filename is not started wit slash it's relative to bind9 'directory' option, usually /var/cache/bind
+    # so log filename will be /var/cache/bind/rpz.log
+    file: |
+      "rpz.log" versions 3 size 5m
+    severity: info
+    print-time: "yes"
+    print-category: "yes"
+    print-severity: "yes"
+  category rpz:
+    - rpzlog
+
+bind9_local_conf_file: /etc/bind/named.conf.local
+bind9_local_conf_template: etc/bind/named.conf.local.j2
+bind9_local_conf: {}
+
+bind9_default_zones_conf_file: /etc/bind/named.conf.default-zones
+bind9_default_zones_conf_template: etc/bind/named.conf.default-zones.j2
+bind9_default_zones_conf: {}
+
+# ddns key files
+# created key files will be referenced in named.conf.local via 'include "some.key"' statements
+# but only if 'ensure: present'
+bind9_ddns_key_dir: /etc/bind/keys
+bind9_ddns_key_template: etc/bind/keys/key.j2
+bind9_ddns_key_files:
+  private.key:
+    ensure: present
+    algorithm: hmac-sha512
+    secret: "Mnrg4DxfVuXU1KeU+UzkeexkpbKgiyXDCt94IoRCvO4Xt/l3fGd//OfElEDHg002WP+cGuwWqyWlRsRu/S1sXQ=="
+  absent.key:
+    # key is marked for removal
+    ensure: absent
+    algorithm: hmac-sha512
+    secret: "Mnrg4DxfVuXU1KeU+UzkeexkpbKgiyXDCt94IoRCvO4Xt/l3fGd//OfElEDHg002WP+cGuwWqyWlRsRu/S1sXQ=="
+  no_ensure.key:
+    algorithm: hmac-sha512
+    secret: "Mnrg4DxfVuXU1KeU+UzkeexkpbKgiyXDCt94IoRCvO4Xt/l3fGd//OfElEDHg002WP+cGuwWqyWlRsRu/S1sXQ=="
+
+# ddns keys
+# will be rendered in named.conf.local config file
+bind9_ddns_keys:
+  shared_key:
+    algorithm: hmac-sha512
+    secret: "2u0emWdtOql/4H2/wLRXGDTlPp5nanjzPcQ72JQvRbGujKkIkW/pDlJH+2aHyo5nnL3VRhrs00aGpbExnvEX7A=="
+
+# zone files
+bind9_valid_zone_types:
+  - master
+  - primary
+  - slave
+  - secondary
+  - delegation-only
+  - forward
+  - hint
+  - in-view
+  - redirect
+  - static-stub
+  - stub
+
+bind9_zones_dir: /var/lib/bind
+bind9_forward_zone_template: forward_zone.j2
+bind9_forward_zones:
+  int.company.tld:
+    ensure: present
+    comment: my company internal zone
+    # set zone type to 'master' if provided ipv4 belongs to this host
+    master_ip: "{{ ansible_eth0['ipv4']['address'] }}"
+    # OR explicitly set zone type, does have higher priority than 'master_ip'
+    # type: master
+    # if master_ip is not set or it does not match with ip addresses of this host
+    # and 'type' is not explicitly set it will defaults to 'slave'
+    #
+    # statements (properties) which valid inside zone block
+    # https://www.zytrax.com/books/dns/ch7/zone.html
+    # NB do not set 'type' here
+    # properties which are valid for any zone type
+    props: {}
+    # properties which are valid for master zone type
+    props_master:
+      allow-update:
+        - key private.key
+    # properties which are valid for slave zone type
+    props_slave:
+      masters:
+        - 192.168.2.9
+    # validate zone with named-checkzone
+    validate: true
+    # default ttl for a zone
+    ttl: 600
+    # optional value for $ORIGIN to put at the beginning of the zone file
+    # origin: my.company.tld.
+    soa:
+      # $TTL for SOA
+      ttl: 1800
+      # FQDN with dot at the end
+      master: ns1.int.company.tld.
+      # if email is not set it will be rendered as invalid.<current_zone>.
+      email: hostmaster.company.tld.
+      # if serial is not set it will be updated on each run and set to now(utc=true, fmt='%Y%m%d%S')
+      # NB if you change zone records do not forget to increase serial value!
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: ns1
+        value: 192.168.2.250
+      - name: ns2
+        value: 192.168.2.251
+      - name: foo
+        ttl: 1800
+        type: A
+        value: 192.168.2.250
+      - name: bar
+        type: A
+        value: 192.168.2.251
+      - type: MX
+        pref: 10
+        value: mail.foo.bar.
+      - name: spf0
+        type: TXT
+        value: simple string
+      - name: spf2
+        type: TXT
+        value:
+          - list multiline
+          - fizz buzz
+
+bind9_reverse_zone_template: reverse_zone.j2
+bind9_reverse_zones:
+  192.168.2:
+    ensure: present
+    comment: zone for 192.168.2.0/24 network
+    # set zone type to 'master' if provided ipv4 belongs to this host
+    master_ip: "{{ ansible_eth0['ipv4']['address'] }}"
+    # OR explicitly set zone type, does have higher priority than 'master_ip'
+    # type: master
+    # if master_ip is not set or it does not match with ip addresses of this host
+    # and 'type' is not explicitly set it will defaults to 'slave'
+    #
+    # statements (properties) which valid inside zone block
+    # https://www.zytrax.com/books/dns/ch7/zone.html
+    # NB do not set 'type' here
+    # properties which are valid for any zone type
+    props: {}
+    # properties which are valid for master zone type
+    props_master:
+      allow-update:
+        - key private.key
+    # properties which are valid for slave zone type
+    props_slave:
+      masters:
+        - 192.168.2.9
+    # validate zone with named-checkzone
+    validate: true
+    # default ttl for a zone records
+    ttl: 600
+    soa:
+      # $TTL for SOA
+      ttl: 1800
+      # FQDN with dot at the end
+      master: ns1.int.company.tld.
+      # email: hostmaster.company.tld
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: 10
+        type: PTR
+        value: foo.bar.domain.
+      - name: 11
+        value: baz
+
+bind9_rpz_zone_template: rpz_zone.j2
+bind9_rpz_zones:
+  rpz.local:
+    ensure: present
+    comment: Local RPZ zone
+    # set zone type to 'master' if provided ipv4 belongs to this host
+    master_ip: "{{ ansible_eth0['ipv4']['address'] }}"
+    # OR explicitly set zone type, does have higher priority than 'master_ip'
+    # type: master
+    # if master_ip is not set or it does not match with ip addresses of this host
+    # and 'type' is not explicitly set it will defaults to 'slave'
+    #
+    # statements (properties) which valid inside zone block
+    # https://www.zytrax.com/books/dns/ch7/zone.html
+    # NB do not set 'type' here
+    # properties which are valid for any zone type
+    props: {}
+    # properties which are valid for master zone type
+    props_master:
+      allow-update:
+        - key private.key
+    # properties which are valid for slave zone type
+    props_slave:
+      masters:
+        - 192.168.2.9
+    # validate zone with named-checkzone
+    validate: true
+    # default ttl for a zone records
+    ttl: 600
+    #
+    # rpz zone options to put after zone name inside response-policy block
+    # options: {'policy': 'given'}
+    # will give
+    # options {
+    #   ...
+    #   response-policy {
+    #     zone "myzone" policy given;
+    #   };
+    # };
+    options:
+      policy: given
+      max-policy-ttl: 600
+    origin: '.'
+    soa:
+      # $TTL for SOA
+      ttl: 1800
+      # for rpz use 'localhost.' if you not sure
+      master: localhost.
+      email: hostmaster.company.tld.
+      serial: 2025032642
+      refresh: 1m
+      retry: 1m
+      expire: 1w
+      minimum: 1m
+    ns:
+      # for rpz use 'localhost.' if you not sure
+      - localhost.
+    rrs:
+      - name: private-service.company.tld
+        value: 172.24.1.3
+
+
+# Real world example
+---
+## BEGIN helper variables
+
+# we don't know wired LAN interface name so we need to find IP
+# by matching all IPs with a wired LAN network - 10.24.64.0/23
+# saving value in variable for later use
+# ! will fail if list at the input of the 'first' filter is empty or value is not a list
+bind9_wired_lan_ip: "{{ ansible_all_ipv4_addresses | ansible.utils.ipaddr('10.24.64.0/23') | first }}"
+
+# variable to hold list of IP addresses of all bind9 servers in the network
+bind9_servers_ips:
+  - 10.24.64.1
+  - 10.24.64.2
+
+bind9_primary_master: 10.24.64.1
+
+bind9_master_props:
+  allow-update:
+    - key ddns.key
+
+bind9_slave_props:
+  primaries:
+    - "{{ bind9_primary_master }}"
+## END helper variables
+
+# debian 'defaults' file parameters
+bind9_default_resolvconf: "no"
+# bind9_user is defined in defaults, start 1 worker thread, we don't want worker threads = number of CPU cores
+bind9_default_options: -u {{ bind9_user }} -n 1
+
+bind9_acls:
+  listen_on:
+    - // loopback
+    - "{{ ansible_lo['ipv4']['address'] }}"
+    - // eth1
+    - "{{ ansible_eth1['ipv4']['address'] }}"
+    - // Wired LAN interface IP
+    - "{{ bind9_wired_lan_ip }}"
+
+  int:
+    - // Whole local network
+    - 10.24.0.0/17
+    - // VPN network
+    - 10.30.1.0/24
+    - // Legacy network
+    - 192.168.2.0/24
+
+bind9_options_conf:
+  directory: /var/cache/bind
+  forwarders:
+    - |-
+      // main forwarders
+    - 1.1.1.1
+    - 8.8.4.4
+  dnssec-validation: auto
+  listen-on:
+    - listen_on
+  listen-on-v6:
+    - "none"
+  extra_options:
+    # notify all servers from also-notify list
+    - notify: "yes"
+    # list all DNS servers IP addresses except our own IP address
+    - also-notify: "{{ bind9_servers_ips | reject('equalto', bind9_wired_lan_ip) | list }}"
+    - allow-transfer: "{{ bind9_servers_ips | reject('equalto', bind9_wired_lan_ip) | list }}"
+    - // Always save zone in plain text format, for easy conversion from slave to master.
+    - masterfile-format: text
+    - max-cache-size: 128M
+    # 5 days, default for Bind9 is 7 days
+    - max-cache-ttl: 432000
+    # 5 minutes, default for Bind9 is 3 hours
+    - max-ncache-ttl: 300
+    - // conform to RFC1035
+    - auth-nxdomain: "no"
+    - recursion: "yes"
+    - allow-query:
+      - int
+    - allow-recursion:
+      - int
+    - allow-query-cache:
+      - int
+
+bind9_logging:
+  category lame-servers:
+    - |-
+      // Don't log "lame server" messages. A lame server is one listed  as authoritive
+      // (as in, it's listed as a nameserver in the domain record) but when queried,
+      // it responds as non-authoritive. Nothing you can do about it, and it's not very important.
+    - "null"
+  # add logging for queries that are processed by RPZ
+  channel rpzlog:
+    # if quoted filename is not started wit slash it's relative to bind9 'directory' option, usually /var/cache/bind
+    # so log filename will be /var/cache/bind/rpz.log
+    file: |
+      "rpz.log" versions 3 size 5m
+    severity: info
+    print-time: "yes"
+    print-category: "yes"
+    print-severity: "yes"
+  category rpz:
+    - rpzlog
+
+bind9_ddns_key_files:
+  # /etc/bind/keys/secondary.key
+  secondary.key:
+    ensure: present
+    algorithm: hmac-sha512
+    secret: MFQrpNd...l4hSPog==
+  # /etc/bind/keys/ddns.key
+  ddns.key:
+    ensure: present
+    algorithm: hmac-sha512
+    secret: vUXpP7z...3L7VG/A==
+
+bind9_ddns_keys: {}
+
+bind9_forward_zones:
+  int.company.tld:
+    ensure: present
+    # If 'force: true' zone will be updated even if zone file already exist
+    # If 'force: false' zone will be created only if zone file does not exist
+    # default is false
+    force: false
+    comment: int.company.tld zone for internal network
+    master_ip: "{{ bind9_primary_master }}"
+    # statements (properties) which valid inside zone block
+    # https://www.zytrax.com/books/dns/ch7/zone.html
+    props_master: "{{ bind9_master_props }}"
+    props_slave: "{{ bind9_slave_props }}"
+    validate: true
+    ttl: 600
+    # optional value for $ORIGIN to put at the beginning of the zone file
+    # origin: my.company.tld.
+    soa:
+      master: ns1.int.company.tld.
+      email: hostmaster.company.tld.
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: ns1
+        value: "{{ bind9_primary_master }}"
+      - name: ns2
+        value: 10.24.126.2
+
+bind9_reverse_zones:
+  # 3 octets max!
+  10.24.64:
+    ensure: present
+    force: true
+    comment: Reverse zone for wired lan network
+    master_ip: "{{ bind9_primary_master }}"
+    props_master: "{{ bind9_master_props }}"
+    props_slave: "{{ bind9_slave_props }}"
+    validate: true
+    ttl: 600
+    soa:
+      master: ns1.int.company.tld.
+      email: hostmaster.company.tld.
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: 1
+        type: PTR
+        value: hw01.lan.company.tld.
+      - name: 2
+        type: PTR
+        value: hw02.lan.company.tld.
+  10.24.1:
+    ensure: present
+    force: false
+    comment: Reverse zone for hw01 network
+    master_ip: "{{ bind9_primary_master }}"
+    props_master: "{{ bind9_master_props }}"
+    props_slave: "{{ bind9_slave_props }}"
+    validate: true
+    ttl: 600
+    soa:
+      master: ns1.int.company.tld.
+      # email: hostmaster.company.tld
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: 1
+        type: PTR
+        value: hw01.int.company.tld.
+  10.24.2:
+    ensure: present
+    force: false
+    comment: Reverse zone for hw02 network
+    master_ip: "{{ bind9_primary_master }}"
+    props_master: "{{ bind9_master_props }}"
+    props_slave: "{{ bind9_slave_props }}"
+    validate: true
+    ttl: 600
+    soa:
+      master: ns1.int.company.tld.
+      # email: hostmaster.company.tld
+      serial: 2025032642
+      refresh: 2h
+      retry: 5m
+      expire: 1w
+      minimum: 10m
+    ns:
+      - ns1.int.company.tld.
+      - ns2.int.company.tld.
+    rrs:
+      - name: 1
+        type: PTR
+        value: hw02.int.company.tld.
+
+bind9_rpz_zones:
+  rpz:
+    ensure: present
+    # If force: true zone will be updated even if zone file already exist
+    # If force: false zone will be created only if zone file does not exist
+    # default is true
+    force: true
+    comment: RPZ for company.tld
+    master_ip: "{{ ansible_dummy0['ipv4']['address'] }}"
+    props: {}
+    options:
+      policy: given
+    validate: false
+    ttl: 600
+    origin: '.'
+    soa:
+      master: localhost.
+      email: hostmaster.company.tld.
+      serial: 2025032642
+      refresh: 1m
+      retry: 1m
+      expire: 1w
+      minimum: 1m
+    ns:
+      - localhost.
+    rrs:
+      # company.tld ala "split brain dns"
+      - name: private-service.company.tld
+        value: 10.24.1.3

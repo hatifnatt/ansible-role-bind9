@@ -1,0 +1,4 @@
+key "{{ item.key }}" {
+        algorithm {{ item.value['algorithm'] }};
+        secret "{{ item.value['secret'] }}";
+};

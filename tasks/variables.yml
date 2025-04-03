@@ -1,0 +1,30 @@
+---
+# Load OS specific vars
+- name: Bind9 | Load OS-specific vars
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', params) }}"
+  vars:
+    params:
+      files:
+        - '{{ ansible_distribution }}.yml'
+        - '{{ ansible_os_family }}.yml'
+        - main.yml
+      paths:
+        - 'vars'
+      skip: true
+
+# OS specific variable management example
+#
+# - name: Bind9 | Define bind9_default_file
+#   ansible.builtin.set_fact:
+#     bind9_default_file: "{{ __bind9_default_file | string }}"
+#   when: bind9_default_file is not defined
+
+# - name: Bind9 | Define bind9_default_resolvconf
+#   ansible.builtin.set_fact:
+#     bind9_default_resolvconf: "{{ __bind9_default_resolvconf | string }}"
+#   when: bind9_default_resolvconf is not defined
+
+# - name: Bind9 | Define bind9_default_options
+#   ansible.builtin.set_fact:
+#     bind9_default_options: "{{ __bind9_default_options | string }}"
+#   when: bind9_default_options is not defined

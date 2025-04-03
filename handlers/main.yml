@@ -1,0 +1,31 @@
+---
+
+# ! Config validation handler will always be triggered
+- name: Bind9 | Validate config # noqa command-instead-of-shell
+  ansible.builtin.shell:
+    cmd: "named-checkconf {{ bind9_primary_conf_file }}"
+  become: true
+  become_user: "{{ bind9_user }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+  register: bind9_conf_validation
+
+- name: Bind9 | Restart
+  ansible.builtin.service:
+    name: "{{ bind9_service_name }}"
+    state: restarted
+  ignore_errors: "{{ ansible_check_mode }}"
+  register: bind9_service_restarted
+  when:
+    - bind9_service_manage | bool
+    - bind9_conf_validation is succeeded
+
+- name: Bind9 | Reload
+  ansible.builtin.service:
+    name: "{{ bind9_service_name }}"
+    state: reloaded
+  ignore_errors: "{{ ansible_check_mode }}"
+  when:
+    - bind9_service_manage | bool
+    - bind9_conf_validation is succeeded
+    - bind9_service_restarted is not defined

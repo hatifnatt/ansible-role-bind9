@@ -1,0 +1,60 @@
+---
+# Create directory for ddns key files
+# Only when some ddns key files configuration provided
+- name: Bind9 | Create directory for ddns key files
+  ansible.builtin.file:
+    path: "{{ bind9_ddns_key_dir }}"
+    state: directory
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0750"
+  when: bind9_ddns_key_files
+  tags:
+    - config
+    - ddns-keys
+    - bind9
+    - bind9-config
+    - bind9-ddns-keys
+
+# Create ddns key files in {{ bind9_ddns_key_dir }}
+- name: Bind9 | Create DDNS keys
+  ansible.builtin.template:
+    src: "{{ bind9_ddns_key_template }}"
+    dest: "{{ [bind9_ddns_key_dir, item.key] | path_join }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0640"
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_ddns_key_files }}"
+  when:
+    - bind9_ddns_key_files
+    - item.value
+    - item.value.get('ensure', 'present')  == 'present'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - ddns-keys
+    - bind9
+    - bind9-config
+    - bind9-ddns-keys
+
+# Remove ddns key files from {{ bind9_ddns_key_dir }}
+- name: Bind9 | Remove DDNS keys
+  ansible.builtin.file:
+    path: "{{ [bind9_ddns_key_dir, item.key] | path_join }}"
+    state: absent
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_ddns_key_files }}"
+  loop_control:
+    label: "key: {{ item.key }}, ensure: {{ item.value.get('ensure', 'unset') }}"
+  when:
+    - bind9_ddns_key_files
+    - item.value
+    - item.value.get('ensure', 'present') == 'absent'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - ddns-keys
+    - bind9
+    - bind9-config
+    - bind9-ddns-keys

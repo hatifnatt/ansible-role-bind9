@@ -1,0 +1,33 @@
+{% from 'macro.j2' import dump_rr with context %}
+{% set zone = item.value %}
+{% set zone_name = item.key %}
+{% set primary_master = zone.soa.get('master', zone.ns[0]) %}
+{% set email = zone.soa.get('email', 'invalid.' ~ zone_name) %}
+{# Add dot at the end of soa records if not present #}
+{% set soa_zone_name = zone_name if zone_name is regex('.*\.$') else zone_name ~ '.' %}
+{% set soa_primary_master = primary_master if primary_master is regex('.*\.$') else primary_master ~ '.' %}
+{% set soa_email = email if email is regex('.*\.$') else email ~ '.' %}
+{% set serial = now(utc=true, fmt='%Y%m%d%S') %}
+{% set origin = zone.get('origin', zone_name) %}
+{{ '; ' ~ zone.get('comment', '') if 'comment' in zone }}
+{# Set $ORIGIN and $TTL for SOA #}
+$ORIGIN .
+$TTL {{ zone.soa.get('ttl', '1800') }}
+{{ soa_zone_name }}	IN	SOA	{{ soa_primary_master }} {{ soa_email }} (
+				{{ zone.soa.get('serial', serial) }}	; serial
+				{{ zone.soa.get('refresh', '2h') }}	; refresh
+				{{ zone.soa.get('retry', '5m') }}	; retry
+				{{ zone.soa.get('expire', '1w') }}	; expire
+				{{ zone.soa.get('minimum:', '10m') }}	; minimum
+				)
+{% for ns_server in zone.ns %}
+		IN	NS	{{ ns_server }}
+{% endfor %}
+{# Set $ORIGIN for zone records, add final dot to the domain if not present, set $TTL #}
+$ORIGIN {{ origin if origin is regex('.*\.$') else origin ~ '.' }}
+$TTL {{ zone.get('ttl', '600') }}
+{% if 'rrs' in zone and zone.rrs %}
+{%  for rr in zone.rrs %}
+{{ dump_rr(rr) }}
+{%  endfor %}
+{% endif %}

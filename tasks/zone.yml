@@ -1,0 +1,157 @@
+---
+# Manage zone files
+
+# Create directory for zone files
+# Only when some zone files configuration provided
+- name: Bind9 | Create directory for zone files
+  ansible.builtin.file:
+    path: "{{ bind9_zones_dir }}"
+    state: directory
+    owner: root
+    group: "{{ bind9_group }}"
+    mode: "0775"
+  when: bind9_forward_zones or bind9_reverse_zones or bind9_rpz_zones
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Create forward zones in {{ bind9_zones_dir }}
+- name: Bind9 | Create forward zones
+  ansible.builtin.template:
+    src: "{{ bind9_forward_zone_template }}"
+    dest: "{{ [bind9_zones_dir, item.key ~ '.hosts'] | path_join }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    force: "{{ item.value.get('force', false) }}"
+    mode: "0644"
+    validate: |
+      {{ 'named-checkzone ' ~ item.key ~ ' %s' if item.value.get('validate', false) else 'true %s' }}
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_forward_zones }}"
+  when:
+    - bind9_forward_zones
+    - item.value
+    - item.value.get('ensure', 'present')  == 'present'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Remove forward zones from {{ bind9_zones_dir }}
+- name: Bind9 | Remove forward zones
+  ansible.builtin.file:
+    path: "{{ [bind9_zones_dir, item.key ~ '.hosts'] | path_join }}"
+    state: absent
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_forward_zones }}"
+  loop_control:
+    label: "zone: {{ item.key }}, ensure: {{ item.value.get('ensure', 'unset') }}"
+  when:
+    - bind9_forward_zones
+    - item.value
+    - item.value.get('ensure', 'present') == 'absent'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Create reverse zones in {{ bind9_zones_dir }}
+- name: Bind9 | Create reverse zones
+  ansible.builtin.template:
+    src: "{{ bind9_reverse_zone_template }}"
+    dest: "{{ [bind9_zones_dir, item.key ~ '.rev'] | path_join }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    force: "{{ item.value.get('force', false) }}"
+    mode: "0644"
+    validate: |
+      {{ 'named-checkzone ' ~ item.key.split('.')[0:3]|reverse|join('.') ~ '.in-addr.arpa' ~ ' %s' if item.value.get('validate', false) else 'true %s' }}
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_reverse_zones }}"
+  when:
+    - bind9_reverse_zones
+    - item.value
+    - item.value.get('ensure', 'present')  == 'present'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Remove reverse zones from {{ bind9_zones_dir }}
+- name: Bind9 | Remove reverse zones
+  ansible.builtin.file:
+    path: "{{ [bind9_zones_dir, item.key ~ '.rev'] | path_join }}"
+    state: absent
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_reverse_zones }}"
+  loop_control:
+    label: "zone: {{ item.key }}, ensure: {{ item.value.get('ensure', 'unset') }}"
+  when:
+    - bind9_reverse_zones
+    - item.value
+    - item.value.get('ensure', 'present') == 'absent'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Create response-policy zones in {{ bind9_zones_dir }}
+- name: Bind9 | Create response-policy zones
+  ansible.builtin.template:
+    src: "{{ bind9_rpz_zone_template }}"
+    dest: "{{ [bind9_zones_dir, item.key ~ '.rpz'] | path_join }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    force: "{{ item.value.get('force', true) }}"
+    mode: "0644"
+    validate: |
+      {{ 'named-checkzone ' ~ item.key ~ ' %s' if item.value.get('validate', false) else 'true %s' }}
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_rpz_zones }}"
+  when:
+    - bind9_rpz_zones
+    - item.value
+    - item.value.get('ensure', 'present')  == 'present'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Remove response-policy zones from {{ bind9_zones_dir }}
+- name: Bind9 | Remove response-policy zones
+  ansible.builtin.file:
+    path: "{{ [bind9_zones_dir, item.key ~ '.rpz'] | path_join }}"
+    state: absent
+  ignore_errors: "{{ ansible_check_mode }}"
+  with_dict: "{{ bind9_rpz_zones }}"
+  loop_control:
+    label: "zone: {{ item.key }}, ensure: {{ item.value.get('ensure', 'unset') }}"
+  when:
+    - bind9_rpz_zones
+    - item.value
+    - item.value.get('ensure', 'present') == 'absent'
+  notify: Bind9 | Reload
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones

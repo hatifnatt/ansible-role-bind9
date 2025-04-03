@@ -1,0 +1,77 @@
+---
+# Variable configuration.
+- name: Bind9 | Initialize OS-specific variables
+  ansible.builtin.include_tasks:
+    file: "variables.yml"
+    apply:
+      tags:
+        - always
+  when: ansible_os_family in bind9_supported_os_family
+  tags:
+    - always
+
+# Install packages
+- name: Bind9 | Include install tasks
+  ansible.builtin.include_tasks: "install.yml"
+  tags:
+    - install
+    - bind9
+    - bind9-install
+
+- name: Bind9 | Include OS-specific tasks
+  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"
+  when: ansible_os_family in bind9_supported_os_family
+  tags:
+    - always
+
+# Create key(s)
+- name: Bind9 | Include DDNS keys management tasks
+  ansible.builtin.include_tasks: "ddns_keys.yml"
+  tags:
+    - config
+    - ddns-keys
+    - bind9
+    - bind9-config
+    - bind9-ddns-keys
+
+# Create zone files
+- name: Bind9 | Include zone files management tasks
+  ansible.builtin.include_tasks: "zone.yml"
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+
+# Create main configuration
+- name: Bind9 | Include config tasks
+  ansible.builtin.include_tasks: "config.yml"
+  tags:
+    - config
+    - bind9
+    - bind9-config
+
+# Always trigger config validation handler
+- name: Bind9 | Trigger config validation # noqa command-instead-of-shell
+  ansible.builtin.debug:
+    msg: Run config validation handler
+  changed_when: true
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify:
+    - Bind9 | Validate config
+  tags:
+    - always
+
+# Enable and start bind9 service
+- name: Bind9 | Manage system service
+  ansible.builtin.service:
+    name: "{{ bind9_service_name }}"
+    state: "{{ bind9_service_state }}"
+    enabled: "{{ bind9_service_enabled | bool }}"
+  when: bind9_service_manage | bool
+  tags:
+    - config
+    - service
+    - bind9
+    - bind9-service
