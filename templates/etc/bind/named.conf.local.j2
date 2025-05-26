@@ -31,9 +31,13 @@ key "{{ key_name }}" {
 {%  for fzone_name, fzone in bind9_forward_zones.items() %}
 {%    if fzone.get('ensure', 'present') == 'present' %}
 {% set fzone_filename = (bind9_zones_dir, fzone_name ~ '.hosts') | path_join  %}
+{% set fzone_type = fzone.get('type', '') %}
 // {{ fzone.get('comment', fzone_name) }}
 zone "{{ fzone_name }}" {
+{# Option 'file' is not allowed in 'forward' type zones #}
+{%   if not fzone_type == 'forward' %}
 	file "{{ fzone_filename }}";
+{%   endif %}
 {{ dump_zone(fzone, ind=1) }}
 };
 {%     endif %}
@@ -45,9 +49,12 @@ zone "{{ fzone_name }}" {
 {%  for rzone_name, rzone in bind9_reverse_zones.items() %}
 {%    if rzone.get('ensure', 'present') == 'present' %}
 {% set rzone_filename = (bind9_zones_dir, rzone_name ~ '.rev') | path_join  %}
+{% set rzone_type = rzone.get('type', '') %}
 // {{ rzone.get('comment', rzone_name) }}
 zone "{{ rzone_name.split('.')[0:3]|reverse|join('.') }}.in-addr.arpa" {
+{%   if not rzone_type == 'forward' %}
 	file "{{ rzone_filename }}";
+{%   endif %}
 {{ dump_zone(rzone, ind=1) }}
 };
 {%     endif %}
