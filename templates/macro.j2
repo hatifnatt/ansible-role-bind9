@@ -67,9 +67,9 @@
     {%- if type in bind9_valid_zone_types -%}
         {#- Variable with full string is requred for proper indentation -#}
         {%- set type_str = 'type ' ~ type ~ ';' -%}
-{{ type_str|indent(ind_str|string*ind, True) }}
+{{ type_str|indent(ind_str|string*ind, True) }}{{ lb }}
     {%- else -%}
-{{ invalid|indent(ind_str|string*ind, True) }}
+{{ invalid|indent(ind_str|string*ind, True) }}{{ lb }}
     {%- endif -%}
     {%- if type in master_types and zone.get('props_master', {}) -%}
 {{ dump_config(zone.get('props_master', {}), ind='\t') }}
