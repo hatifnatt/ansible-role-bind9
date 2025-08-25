@@ -52,6 +52,32 @@
     - bind9
     - bind9-config
 
+# Install package required for community.general.nsupdate
+# Separate file for possible OS specific mumbo jumbo in the future
+- name: Bind9 | Include nsupdate requirements install tasks
+  ansible.builtin.include_tasks: "install-nsupdate-requirements.yml"
+  tags:
+    - install
+    - bind9
+    - bind9-install
+    - bind9-zones-ddns
+
+- name: Bind9 | Include DDNS zones management tasks
+  ansible.builtin.include_tasks: "zone_ddns.yml"
+  loop: "{{ bind9_ddns_zones | dict2items }}"
+  loop_control:
+    loop_var: zone_item
+    label: "{{ zone_item.key }}"
+  when:
+    - bind9_ddns_zones
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+    - bind9-zones-ddns
+
 # Always trigger config validation handler
 - name: Bind9 | Trigger config validation # noqa command-instead-of-shell
   ansible.builtin.debug:

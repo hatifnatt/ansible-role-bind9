@@ -10,6 +10,7 @@ What this role can do:
 * create forward zones
 * create reverse zones
 * create rpz zones
+* update zone records via DDNS
 * reference zones in named.conf.local configuration
 
 ## Requirements
@@ -45,7 +46,5 @@ Somewhat inspired by [systemli ansible-role-bind9](https://github.com/systemli/a
 
 ## TODO
 
-* create empty forward and reverse zones - zone files with no records meant for DDNS updates
-* update zone records via DDNS from Ansible
 * reload individual zones with rndc after update
 * make sure to restart only when necessary

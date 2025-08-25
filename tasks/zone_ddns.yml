@@ -1,0 +1,34 @@
+- name: Bind9 | Create records via DDNS in {{ zone_item.key }}
+  community.general.nsupdate:
+    # server parameters
+    key_name: "{{ zone_item.value.key_name }}"
+    key_algorithm: "{{ zone_item.value.key_algorithm | default('hmac-md5') }}"
+    key_secret: "{{ zone_item.value.key_secret }}"
+    server: "{{ zone_item.value.server | default('127.0.0.1') }}"
+    port: "{{ zone_item.value.port | default(53) }}"
+    protocol: "{{ zone_item.value.protocol | default('tcp') }}"
+    # zone
+    zone: "{{ zone_item.key }}"
+    # zone records parameters
+    record: "{{ item.record }}"
+    type: "{{ item.type | default('A') }}"
+    value: "{{ item.value }}"
+    ttl: "{{ item.ttl | default(zone_item.value.default_ttl | default(3600)) }}"
+    state: "{{ item.state | default('present') }}"
+  with_list: "{{ zone_item.value.rrs }}"
+  loop_control:
+    label: >-
+      Record: {{ item.record }}, Type: {{ item.type }}, Value: {{ item.value }},
+      TTL: {{ item.ttl | default(zone_item.value.default_ttl | default(3600)) }}
+  when:
+    - (zone_item.value.get('restrict_to_server', true) | bool
+        and (zone_item.value.get('server', '127.0.0.1') in ansible_all_ipv4_addresses
+              or zone_item.value.get('server', '127.0.0.1') in ansible_all_ipv6_addresses))
+      or not zone_item.value.get('restrict_to_server', true) | bool
+  tags:
+    - config
+    - zones
+    - bind9
+    - bind9-config
+    - bind9-zones
+    - bind9-zones-ddns

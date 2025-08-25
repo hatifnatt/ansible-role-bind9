@@ -1,0 +1,17 @@
+---
+# Install package required for community.general.nsupdate
+- name: Bind9 | Install nsupdate requirements
+  ansible.builtin.package:
+    name: "{{ bind9_nsupdate_package }}"
+    state: present
+    # install_recommends is an apt specific parameter
+    install_recommends: false
+  ignore_errors: "{{ ansible_check_mode }}"
+  when:
+    - bind9_nsupdate_package
+    - bind9_ddns_zones
+  tags:
+    - install
+    - bind9
+    - bind9-install
+    - bind9-zones-ddns

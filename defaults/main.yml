@@ -13,6 +13,9 @@ bind9_packages:
 
 bind9_extra_packages: []
 
+# package required for community.general.nsupdate
+bind9_nsupdate_package: python3-dnspython
+
 # bind9 (named) service parameters
 bind9_service_name: named
 bind9_service_manage: true
@@ -91,5 +94,7 @@ bind9_reverse_zones: {}
 
 bind9_rpz_zone_template: rpz_zone.j2
 bind9_rpz_zones: {}
+
+bind9_ddns_zones: {}
 
 # check Debian specific variables in vars/Debian.yml file
