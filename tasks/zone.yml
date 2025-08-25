@@ -1,6 +1,9 @@
 ---
 # Manage zone files
 
+# TODO: Try to sync zones via rndc before any changes, only if zone file exists
+# This way backup of the zone file will be consistent
+
 # Create directory for zone files
 # Only when some zone files configuration provided
 - name: Bind9 | Create directory for zone files
@@ -26,6 +29,8 @@
     owner: "{{ bind9_user }}"
     group: "{{ bind9_group }}"
     force: "{{ item.value.get('force', false) }}"
+    # if force is true always create backup
+    backup: "{{ true if item.value.force | bool else item.value.get('backup', false) }}"
     mode: "0644"
     validate: |
       {{ 'named-checkzone ' ~ item.key ~ ' %s' if item.value.get('validate', false) else 'true %s' }}
@@ -72,6 +77,8 @@
     owner: "{{ bind9_user }}"
     group: "{{ bind9_group }}"
     force: "{{ item.value.get('force', false) }}"
+    # if force is true always create backup
+    backup: "{{ true if item.value.force | bool else item.value.get('backup', false) }}"
     mode: "0644"
     validate: |
       {{ 'named-checkzone ' ~ item.key.split('.')[0:3]|reverse|join('.') ~ '.in-addr.arpa' ~ ' %s' if item.value.get('validate', false) else 'true %s' }}
@@ -118,6 +125,8 @@
     owner: "{{ bind9_user }}"
     group: "{{ bind9_group }}"
     force: "{{ item.value.get('force', true) }}"
+    # RPZ zone is static backup usually is not necessary
+    backup: "{{ item.value.get('backup', false) }}"
     mode: "0644"
     validate: |
       {{ 'named-checkzone ' ~ item.key ~ ' %s' if item.value.get('validate', false) else 'true %s' }}

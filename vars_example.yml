@@ -439,6 +439,8 @@ bind9_forward_zones:
     # If 'force: true' zone will be updated even if zone file already exist
     # If 'force: false' zone will be created only if zone file does not exist
     # default is false
+    # NB 'force: true' is very dangerous all chages you have made in zone manually or via DDNS will be lost
+    # when force is true backup of the zone file will be created but is still can be inconsistent!
     force: false
     comment: int.company.tld zone for internal network
     master_ip: "{{ bind9_primary_master }}"
@@ -471,6 +473,11 @@ bind9_reverse_zones:
   # 3 octets max!
   10.24.64:
     ensure: present
+    # If 'force: true' zone will be updated even if zone file already exist
+    # If 'force: false' zone will be created only if zone file does not exist
+    # default is false
+    # NB 'force: true' is very dangerous all chages you have made in zone manually or via DDNS will be lost
+    # when force is true backup of the zone file will be created but is still can be inconsistent!
     force: true
     comment: Reverse zone for wired lan network
     master_ip: "{{ bind9_primary_master }}"
