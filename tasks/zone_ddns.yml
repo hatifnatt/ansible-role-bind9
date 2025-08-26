@@ -8,7 +8,7 @@
     port: "{{ zone_item.value.port | default(53) }}"
     protocol: "{{ zone_item.value.protocol | default('tcp') }}"
     # zone
-    zone: "{{ zone_item.key }}"
+    zone: "{{ zone_item.value.zone }}"
     # zone records parameters
     record: "{{ item.record }}"
     type: "{{ item.type | default('A') }}"
