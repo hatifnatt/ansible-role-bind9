@@ -17,6 +17,25 @@
     - bind9
     - bind9-config
 
+# Create general config file usually /etc/bind/named.conf.general
+- name: Bind9 | Update general configuration file
+  ansible.builtin.template:
+    src: "{{ bind9_general_conf_template }}"
+    dest: "{{ bind9_general_conf_file }}"
+    owner: "{{ bind9_user }}"
+    group: "{{ bind9_group }}"
+    mode: "0644"
+  # Only update configuration file if some configuration data provided
+  when:
+    - bind9_general_conf
+  notify:
+    - Bind9 | Validate config
+    - Bind9 | Restart
+  tags:
+    - config
+    - bind9
+    - bind9-config
+
 # Create options config file usually /etc/bind/named.conf.options
 - name: Bind9 | Update options configuration file
   ansible.builtin.template:

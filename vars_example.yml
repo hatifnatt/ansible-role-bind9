@@ -36,6 +36,18 @@ bind9_default_options: '-u {{ bind9_user }} -n 1'
 bind9_primary_conf_file: /etc/bind/named.conf
 bind9_primary_conf_template: etc/bind/named.conf.j2
 
+bind9_general_conf_file: /etc/bind/named.conf.general
+bind9_general_conf_template: etc/bind/named.conf.general.j2
+# any top level configuration can be defined here, i.e. multiple server or view clauses
+# note there is a special variables for acl, options and logging clauses
+# bind9_general_conf can be dictionary or list
+bind9_general_conf:
+  # do not send cookies when requesting a specific server, available since BIND 9.11+
+  server 10.4.250.15:
+    - send-cookie: "no"
+  server 10.4.250.16:
+    - send-cookie: "no"
+
 bind9_acls:
   local_networks:
     - // this acl is an alias for localnets

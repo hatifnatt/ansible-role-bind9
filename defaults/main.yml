@@ -34,6 +34,13 @@ bind9_default_options: ''
 bind9_primary_conf_file: /etc/bind/named.conf
 bind9_primary_conf_template: etc/bind/named.conf.j2
 
+bind9_general_conf_file: /etc/bind/named.conf.general
+bind9_general_conf_template: etc/bind/named.conf.general.j2
+# any top level configuration can be defined here, i.e. multiple server or view clauses
+# note there is a special variables for acl, options and logging clauses
+# bind9_general_conf can be dictionary or list
+bind9_general_conf: {}
+
 bind9_acls: {}
 
 bind9_options_conf_file: /etc/bind/named.conf.options
